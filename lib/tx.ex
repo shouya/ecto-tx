@@ -37,7 +37,9 @@ defmodule Tx do
   def new(f) when is_function(f, 1), do: f
 
   @doc """
-  Return a transaction that returns a pure value.
+  Create a transaction that returns a pure value.
+
+  This is the "pure"/"return" operation if you're familiar with Monad.
 
   Property:
 
@@ -64,9 +66,9 @@ defmodule Tx do
   end
 
   @doc """
-  Compose two transactions. Run second one only if the first one succeeds.
+  Compose two transactions. Run the second one only if the first one succeeds.
 
-  This is the "bind" operator if you're familiar with Monad.
+  This is the "bind" operation if you're familiar with Monad.
 
   Example:
 
@@ -88,7 +90,7 @@ defmodule Tx do
   ]
 
   @doc """
-  Execute the transaction `Tx.t(a)`, producing an `{:ok, a}` or `{:error, any()}`.
+  Execute the transaction `Tx.t(a)`, producing an `{:ok, a}` or `{:error, any}`.
 
   Options:
 
@@ -100,7 +102,7 @@ defmodule Tx do
 
   - Any options Ecto.Repo.transaction/2 accepts.
   """
-  @spec execute(t(a), Ecto.Repo.t(), keyword()) :: {:ok, a} | {:error, any()}
+  @spec execute(t(a), Ecto.Repo.t(), keyword()) :: {:ok, a} | {:error, any}
   def execute(tx, repo, opts \\ []) do
     opts = Keyword.merge(@default_opts, opts)
 
@@ -216,7 +218,7 @@ defmodule Tx do
   end
 
   @doc """
-  Combine a list of transactions `[Tx.t(a)]` a single `Tx.t([a])`.
+  Combine a list of transactions `[Tx.t(a)]` into a single `Tx.t([a])`.
 
       Tx.concat([Tx.pure(1), Tx.pure(2)]) |> Tx.execute(Repo) => {:ok, [1, 2]}
   """
