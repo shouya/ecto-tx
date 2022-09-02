@@ -8,8 +8,9 @@ defmodule Tx.Macro do
 
     import Tx.Macro
 
-    tx do
-      {:ok, a} <- create_a_tx()
+    tx repo do
+      value = repo.insert(foo)
+      {:ok, a} <- create_a_tx(value)
       {:ok, b} <- create_b_tx(a)
       {:ok, {a, b}}
     end
@@ -18,18 +19,21 @@ defmodule Tx.Macro do
 
   Tx.new(fn repo ->
     with
-      {:ok, a} <- Tx.run(repo, tx_a),
+      value = repo.insert(foo)
+      {:ok, a} <- Tx.run(repo, tx_a(value)),
       {:ok, b} <- Tx.run(repo, tx_b(a)) do
       {:ok, {a, b}}
     end
   end)
   """
 
-  defmacro tx(do: {:__block__, _, body}), do: rewrite(body, nil)
-  defmacro tx(do: {:__block__, _, body}, else: e), do: rewrite(body, e)
+  defmacro tx(repo, do: {:__block__, _, body}), do: rewrite(repo, body, nil)
+  defmacro tx(repo, do: {:__block__, _, body}, else: e), do: rewrite(repo, body, e)
+  defmacro tx(do: {:__block__, _, body}), do: rewrite(nil, body, nil)
+  defmacro tx(do: {:__block__, _, body}, else: e), do: rewrite(nil, body, e)
 
-  defp rewrite(body, else_) do
-    repo = Macro.var(:repo, __MODULE__)
+  defp rewrite(repo, body, else_) do
+    repo = repo || Macro.var(:repo, __MODULE__)
 
     quote do
       Tx.new(fn unquote(repo) ->
