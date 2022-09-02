@@ -1,34 +1,63 @@
 defmodule Tx.Macro do
   @moduledoc """
-  A macro to allow easy composition of transactions.
-
-
-  Suppose create_a_tx() has type Trans.t(a) and tx_b has type (a ->
-  Trans.t(b)), then the following block produces a Trans.t({a, b}).
-
-    import Tx.Macro
-
-    tx repo do
-      value = repo.insert(foo)
-      {:ok, a} <- create_a_tx(value)
-      {:ok, b} <- create_b_tx(a)
-      {:ok, {a, b}}
-    end
-
-  Specifically, it expands into:
-
-  Tx.new(fn repo ->
-    with
-      value = repo.insert(foo)
-      {:ok, a} <- Tx.run(repo, tx_a(value)),
-      {:ok, b} <- Tx.run(repo, tx_b(a)) do
-      {:ok, {a, b}}
-    end
-  end)
+  Export macros to allow create complex transactions without boilerplate.
   """
 
+  @doc """
+  Create a transaction with a binding to `repo`.
+
+  The `repo` binding can be used within the body for raw db operations
+  (e.g. `Repo.insert`, `Repo.update`, ...).
+
+  Example:
+
+  The following code:
+
+      import Tx.Macro
+
+      tx repo do
+        {:ok, value} <- repo.insert(foo)
+        {:ok, a} <- create_a_tx(value)
+        {:ok, b} <- create_b_tx(a)
+        {:ok, {a, b}}
+      end
+
+  will expands into:
+
+      Tx.new(fn repo ->
+        with {:ok, value} <- Tx.run(repo, repo.insert(foo)),
+             {:ok, a} <- Tx.run(repo, create_a_tx(value)),
+             {:ok, b} <- Tx.run(repo, create_b_tx(a)) do
+          {:ok, {a, b}}
+        end
+      end)
+  """
   defmacro tx(repo, do: {:__block__, _, body}), do: rewrite(repo, body, nil)
   defmacro tx(repo, do: {:__block__, _, body}, else: e), do: rewrite(repo, body, e)
+
+  @doc """
+  Create a transaction.
+
+      import Tx.Macro
+
+      tx do
+        {:ok, a} <- create_a_tx(value)
+        {:ok, b} <- create_b_tx(a)
+        {:ok, {a, b}}
+      end
+
+  will expands into:
+
+      Tx.new(fn repo ->
+        with {:ok, a} <- Tx.run(repo, create_a_tx(value)),
+             {:ok, b} <- Tx.run(repo, create_b_tx(a)) do
+          {:ok, {a, b}}
+        end
+      end)
+
+  You can use `tx/2` if you need to access to a binding to `repo` from
+  the transaction.
+  """
   defmacro tx(do: {:__block__, _, body}), do: rewrite(nil, body, nil)
   defmacro tx(do: {:__block__, _, body}, else: e), do: rewrite(nil, body, e)
 

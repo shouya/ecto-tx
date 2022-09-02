@@ -59,11 +59,11 @@ defmodule Foo do
       %{content: "third comment"}
     ]
 
-    # Tx.execute/1 is equivalent to Repo.transaction/1.
+    # Tx.execute/2 is equivalent to the Repo.transaction/1 callback.
     #
     # You can further customize rollback_on_error/rollback_on_exception
     # via options.
-    case Tx.execute(create_dummy_post_tx(comments)) do
+    case Tx.execute(create_dummy_post_tx(comments), Repo) do
       {:ok, post} -> post
       {:error, changeset} -> raise RuntimeError
     end

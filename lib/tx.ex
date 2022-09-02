@@ -19,12 +19,40 @@ defmodule Tx do
   @type t(a) :: fn_t(a) | Ecto.Multi.t()
   @type t :: t(any)
 
+  @doc """
+  Create a transaction.
+
+  This function creates a Tx.t() from a function of type
+  `(Ecto.Repo.t() -> {:ok, a} | {:error, any()})`.
+
+  Internally, the `new/1` constructor simply returns the function as
+  is.
+
+  Example:
+
+      t = fn repo -> {:ok, 42} end
+      Tx.execute(Tx.new(t), Repo) == {:ok, 42}
+  """
   @spec new(fn_t(a)) :: t(a)
   def new(f) when is_function(f, 1), do: f
 
+  @doc """
+  Return a transaction that returns a pure value.
+
+  Property:
+
+      Tx.execute(Tx.pure(x), Repo) == {:ok, x}
+  """
   @spec pure(a) :: t(a)
   def pure(a), do: new(fn _ -> {:ok, a} end)
 
+  @doc """
+  Map over the successful result of a transaction.
+
+  Example:
+
+      Tx.pure(1) |> Tx.map(&(&1 + 1)) |> Tx.execute(Repo) == {:ok, 2}
+  """
   @spec map(t(a), (a -> b)) :: t(b)
   def map(t, f) do
     new(fn repo ->
@@ -35,6 +63,15 @@ defmodule Tx do
     end)
   end
 
+  @doc """
+  Compose two transactions. Run second one only if the first one succeeds.
+
+  This is the "bind" operator if you're familiar with Monad.
+
+  Example:
+
+      Tx.pure(1) |> Tx.and_then(&{:error, &1}) |> Tx.execute(Repo) == {:error, 1}
+  """
   @spec and_then(t(a), (a -> t(b))) :: t(b)
   def and_then(t, f) when is_function(f, 1) do
     new(fn repo ->
@@ -50,6 +87,19 @@ defmodule Tx do
     rollback_on_exception: true
   ]
 
+  @doc """
+  Execute the transaction `Tx.t(a)`, producing an `{:ok, a}` or `{:error, any()}`.
+
+  Options:
+
+  - rollback_on_error (Default: true): rollback transaction if the
+    final result is an {:error, any()
+
+  - rollback_on_exception (Default: true): rollback transaction
+    if an uncaught exception arises within the transaction.
+
+  - Any options Ecto.Repo.transaction/2 accepts.
+  """
   @spec execute(t(a), Ecto.Repo.t(), keyword()) :: {:ok, a} | {:error, any()}
   def execute(tx, repo, opts \\ []) do
     opts = Keyword.merge(@default_opts, opts)
@@ -67,11 +117,37 @@ defmodule Tx do
     end
   end
 
+  @doc """
+  Rollback the current transaction.
+
+  Example:
+
+      Tx.new(fn repo ->
+        if 1 == 1 do
+          Tx.rollback(repo, "One cannot be equal to one")
+        else
+          :fine
+        end
+      end)
+      |> Tx.execute(Repo)
+
+  returns `{:error, "One cannot be equal to one"}` immediately, with
+  all previous uncommited changes rolled back.
+  """
   @spec rollback(Ecto.Repo.t(), any()) :: no_return()
   def rollback(repo, error) do
     repo.rollback(error)
   end
 
+  @doc """
+  Make an transaction rollback on error.
+
+  You can use this function to fine-tune the rollback behaviour on
+  specific sub-transactions.
+
+  Please note that it does not support disabling rollback_on_error for
+  sub-transactions.
+  """
   @spec rollback_on_error(t(a), boolean()) :: t(a)
   def rollback_on_error(tx, rollback? \\ true)
   def rollback_on_error(tx, false), do: tx
@@ -85,6 +161,16 @@ defmodule Tx do
     end)
   end
 
+  @doc """
+  Make a transaction (not to) rollback on exception.
+
+  Wrap around `tx` with `rollback_on_exception(tx, false)` if
+  you avoid `tx` to rollback on exception. When an exception occurs,
+  you will get an `{:error, exception}` instead.
+
+  Please note that it does not support enabling rollback_on_exception for
+  sub-transactions because that's the default behaviour.
+  """
   @spec rollback_on_exception(t(a), boolean()) :: t(a)
   def rollback_on_exception(tx, rollback? \\ true)
   def rollback_on_exception(tx, true), do: tx
@@ -99,6 +185,14 @@ defmodule Tx do
     end)
   end
 
+  @doc """
+  Convert a `Tx.t(a)` into a `Multi.t()`.
+
+  You can refer to the transactin's result (`{:ok, a} | {:error,
+  any}`) by `name`.
+
+      Ecto.transaction(to_multi(pure(42), :foo)) => {:ok, %{foo: {:ok, 42}}}
+  """
   @spec to_multi(t(a), any()) :: Ecto.Multi.t()
   def to_multi(tx, name) do
     Ecto.Multi.run(Ecto.Multi.new(), name, fn repo, _changes ->
@@ -106,6 +200,11 @@ defmodule Tx do
     end)
   end
 
+  @doc """
+  Combine two transactions `Tx.t(a)` and `Tx.t(b)` into a single `Tx.t({a, b})`.
+
+      Tx.concat(Tx.pure(1), Tx.pure(2)) |> Tx.execute(Repo) => {:ok, {1, 2}}
+  """
   @spec concat(t(a), t(b)) :: t({a, b})
   def concat(a, b) do
     new(fn repo ->
@@ -116,6 +215,11 @@ defmodule Tx do
     end)
   end
 
+  @doc """
+  Combine a list of transactions `[Tx.t(a)]` a single `Tx.t([a])`.
+
+      Tx.concat([Tx.pure(1), Tx.pure(2)]) |> Tx.execute(Repo) => {:ok, [1, 2]}
+  """
   @spec concat([t(a)]) :: t([a])
   def concat([]), do: pure([])
 
@@ -128,7 +232,19 @@ defmodule Tx do
     end)
   end
 
-  @spec run(t(a), Ecto.Repo.t()) :: {:ok, a} | {:error, any()}
+  @doc """
+  Run a transaction to get its result.
+
+  This is a generic adapter for extracting a `{:ok, a} | {:error, any()}` from
+  a transaction when given a repo.
+
+  - For normal transaction `tx` as a function (default), it simply call tx.(repo)
+  - For Ecto.Multi, it creates a sub-transaction to execute it
+  - For a non-transactional value, it simply returns the value
+
+  This function should be rarely needed if you use the `Tx.Macro.tx` macro.
+  """
+  @spec run(Ecto.Repo.t(), t(a) | any()) :: {:ok, a} | {:error, any()}
   def run(repo, %Ecto.Multi{} = tx), do: execute(tx, repo)
 
   def run(_repo, tx) when is_function(tx, 0),
@@ -137,7 +253,12 @@ defmodule Tx do
   def run(repo, tx) when is_function(tx, 1),
     do: tx.(repo)
 
-  @spec run!(t(a), Ecto.Repo.t()) :: a
+  @doc """
+  The raising version of `run/2`.
+
+  This function should be rarely needed if you use the `Tx.Macro.tx` macro.
+  """
+  @spec run!(Ecto.Repo.t(), t(a)) :: a
   def run!(repo, tx) do
     case run(repo, tx) do
       {:ok, a} -> a
