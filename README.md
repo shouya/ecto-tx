@@ -78,11 +78,11 @@ Internally, a `Tx.t(a)` is defined as a closure with type `Ecto.Repo -> {:ok, a}
 Composing two transactions is then equivalent to the Monad "bind" operation (See `Tx.and_then/2`):
 
 ``` elixir
-@spec bind(Tx.t(a), (a -> Tx.t(b))) :: Tx.t(b)
-def bind(ta, tb) do
+@spec and_then(Tx.t(a), (a -> Tx.t(b))) :: Tx.t(b)
+def and_then(ta, tb) do
   fn repo ->
     ta_result <- ta.(repo)
-    tb.(ta_result)
+    tb.(ta_result).(repo)
   end
 end
 ```
@@ -93,7 +93,6 @@ example,
 ``` elixir
 tx do
   {:ok, a} <- foo()
-  # you can
   b <- bar(a)
   c = d
   {:ok, {a, b, c}}
