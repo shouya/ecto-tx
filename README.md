@@ -2,6 +2,9 @@
 
 Composable transaction as an alternative to Ecto.Multi.
 
+- Hex.pm: https://hex.pm/packages/tx
+- API references: https://hexdocs.pm/tx
+
 ## Examples
 
 ``` elixir
@@ -51,7 +54,7 @@ defmodule Foo do
     end
   end
 
-  @spec actually_create_post() :: [map()]
+  @spec actually_create_post() :: map() | no_return()
   def actually_create_post do
     comments = [
       %{content: "first comment"},
@@ -60,9 +63,6 @@ defmodule Foo do
     ]
 
     # Tx.execute/2 is equivalent to the Repo.transaction/1 callback.
-    #
-    # You can further customize rollback_on_error/rollback_on_exception
-    # via options.
     case Tx.execute(create_dummy_post_tx(comments), Repo) do
       {:ok, post} -> post
       {:error, changeset} -> raise RuntimeError
@@ -71,11 +71,11 @@ defmodule Foo do
 end
 ```
 
-## How does Tx works
+## Implementation detail
 
-Internally, a `Tx.t(a)` is defined as a closure of type `Ecto.Repo -> {:ok, a} | {:error, any}`.
+Internally, a `Tx.t(a)` is defined as a closure with type `Ecto.Repo -> {:ok, a} | {:error, any}`.
 
-Composing two transactions is then equivalent to the "bind" operation:
+Composing two transactions is then equivalent to the Monad "bind" operation (See `Tx.and_then/2`):
 
 ``` elixir
 @spec bind(Tx.t(a), (a -> Tx.t(b))) :: Tx.t(b)
@@ -87,7 +87,8 @@ def bind(ta, tb) do
 end
 ```
 
-This allows us to various composition operatoins. The `tx` macro is used to strip out most of the boilerplate. For example,
+The `tx` macro is used to strip out most of the boilerplate. For
+example,
 
 ``` elixir
 tx do
@@ -111,7 +112,9 @@ fn repo ->
 end
 ```
 
-On top of that, `Tx` implements various adaptation to use Ecto.Multi as a `Tx.t(%{name => result})` by executing the Multi in a sub-transaction.
+On top of that, `Tx` implements adaptation to use Ecto.Multi as a
+`Tx.t(%{name => result})` by executing the `Ecto.Multi` via a
+nested transaction.
 
 ## Installation
 
@@ -120,7 +123,7 @@ The package can be installed by adding `tx` to your list of dependencies in `mix
 ```elixir
 def deps do
   [
-    {:tx, "~> 0.1.0"}
+    {:tx, "~> 0.1.1"}
   ]
 end
 ```
