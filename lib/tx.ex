@@ -253,6 +253,20 @@ defmodule Tx do
   def run(repo, tx) when is_function(tx, 1),
     do: tx.(repo)
 
+  # To support matching pure results in tx macro. For example,
+  #
+  #     tx repo do
+  #       {:ok, foo} <- repo.insert(changeset)
+  #       ...
+  #     end
+  #
+  def run(_repo, {:ok, a}), do: {:ok, a}
+  def run(_repo, {:error, e}), do: {:error, e}
+
+  # This last clause should cover previous two clauses.  I decided to
+  # kept them to be explicit.
+  def run(_repo, other), do: other
+
   @doc """
   The raising version of `run/2`.
 
