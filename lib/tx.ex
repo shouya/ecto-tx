@@ -106,11 +106,15 @@ defmodule Tx do
   def execute(tx, repo, opts \\ []) do
     opts = Keyword.merge(@default_opts, opts)
 
-    tx =
-      tx
-      |> rollback_on_error(Keyword.get(opts, :rollback_on_error))
-      |> rollback_on_exception(Keyword.get(opts, :rollback_on_exception))
+    tx
+    |> rollback_on_error(Keyword.get(opts, :rollback_on_error))
+    |> rollback_on_exception(Keyword.get(opts, :rollback_on_exception))
+    |> execute_raw(repo, opts)
+  end
 
+  # do not handle rollback on error or on exception
+  @spec execute_raw(t(a), Ecto.Repo.t(), keyword()) :: {:ok, a} | {:error, any}
+  defp execute_raw(tx, repo, opts) do
     case repo.transaction(tx, opts) do
       {:ok, {:ok, a}} -> {:ok, a}
       {:ok, {:error, e}} -> {:error, e}
@@ -247,7 +251,15 @@ defmodule Tx do
   This function should be rarely needed if you use the `Tx.Macro.tx` macro.
   """
   @spec run(Ecto.Repo.t(), t(a) | any()) :: {:ok, a} | {:error, any()}
-  def run(repo, %Ecto.Multi{} = tx), do: execute(tx, repo)
+  def run(repo, %Ecto.Multi{} = multi) do
+    case repo.transaction(multi) do
+      {:ok, map} ->
+        {:ok, map}
+
+      {:error, _multi_name, multi_error, _} ->
+        {:error, multi_error}
+    end
+  end
 
   def run(_repo, tx) when is_function(tx, 0),
     do: tx.()
