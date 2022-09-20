@@ -20,7 +20,7 @@ defmodule Foo do
     end
   end
 
-  @spec create_post_tx(Post.t(), map()) :: Tx.t(Comment.t())
+  @spec create_comment_tx(Post.t(), map()) :: Tx.t(Comment.t())
   def create_comment_tx(post, params) do
     params = Map.put(params, :post_id, post.id)
 
