@@ -16,8 +16,28 @@ defmodule Tx do
   @typep b :: term()
 
   @type fn_t(a) :: (Ecto.Repo.t() -> {:ok, a} | {:error, any()})
-  @type t(a) :: fn_t(a) | Ecto.Multi.t() | nil
-  @type t :: t(any) | [t(a)]
+
+  @typedoc """
+  You can put a value of any Tx type on the right of `<-` notation in Tx.Macro.
+
+  A Tx type is any of the following:
+
+  - A Tx function :: any function that takes in a repo and returns a
+    `{:ok, a} | {:error, any()}` pair. You can create a Tx function
+    via the `tx` macro, or any tx combinators like `Tx.new`,
+    `Tx.pure`, `Tx.concat`.
+
+  - An Ecto.Multi.t() :: equivalent a tx function that returns
+    `{:ok, %{multi_name => value}}` or `{:error, multi_error}`
+
+  - nil :: the same was as `Tx.pure(nil)`, which always
+    returns `{:ok, nil}` when been run.
+
+  - A list of any Tx type :: the same as `Tx.concat(list_of_tx)`, which returns
+    `{:ok, list_of_results}` only if all `list_of_tx` succeeds.
+  """
+  @type t(a) :: fn_t(a) | Ecto.Multi.t() | nil | [t(any())]
+  @type t :: t(any)
 
   @doc """
   Create a transaction.
