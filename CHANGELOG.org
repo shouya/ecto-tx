@@ -1,0 +1,25 @@
+
+* 0.1.0
+
+Initialize project.
+
+* 0.1.1
+
+Added:
+
+- Tx.Macro
+
+* 0.1.2
+
+Fixed:
+
+- Infinite loop when using Ecto.Multi
+
+* 0.2.0
+
+Changed:
+
+- Handle nil as a Tx.t()
+- Handle list of Tx.t() as a Tx.t()
+- =rollback_on_error= function renamed into =enable_rollback_on_error= with clarified semantics
+- =rollback_on_exception= function renamed into =disable_rollback_on_error= with clarified semantics
