@@ -17,7 +17,7 @@ defmodule Tx do
 
   @type fn_t(a) :: (Ecto.Repo.t() -> {:ok, a} | {:error, any()})
   @type t(a) :: fn_t(a) | Ecto.Multi.t() | nil
-  @type t :: t(any)
+  @type t :: t(any) | [t(a)]
 
   @doc """
   Create a transaction.
@@ -251,6 +251,7 @@ defmodule Tx do
   This function should be rarely needed if you use the `Tx.Macro.tx` macro.
   """
   @spec run(Ecto.Repo.t(), t(a) | any()) :: {:ok, a} | {:error, any()}
+  def run(repo, xs) when is_list(xs), do: run(repo, Tx.concat(xs))
   def run(_repo, nil), do: {:ok, nil}
 
   def run(repo, %Ecto.Multi{} = multi) do
