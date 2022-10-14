@@ -127,8 +127,14 @@ defmodule Tx do
     opts = Keyword.merge(@default_opts, opts)
 
     tx
-    |> rollback_on_error(Keyword.get(opts, :rollback_on_error))
-    |> rollback_on_exception(Keyword.get(opts, :rollback_on_exception))
+    |> conditional_then(
+      opts[:rollback_on_error],
+      &enable_rollback_on_error/1
+    )
+    |> conditional_then(
+      not opts[:rollback_on_exception],
+      &disable_rollback_on_exception/1
+    )
     |> execute_raw(repo, opts)
   end
 
@@ -170,15 +176,9 @@ defmodule Tx do
 
   You can use this function to fine-tune the rollback behaviour on
   specific sub-transactions.
-
-  Please note that it does not support disabling rollback_on_error for
-  sub-transactions.
   """
-  @spec rollback_on_error(t(a), boolean()) :: t(a)
-  def rollback_on_error(tx, rollback? \\ true)
-  def rollback_on_error(tx, false), do: tx
-
-  def rollback_on_error(trans, true) do
+  @spec enable_rollback_on_error(t(a)) :: t(a)
+  def enable_rollback_on_error(trans) do
     new(fn repo ->
       case run(repo, trans) do
         {:ok, value} -> {:ok, value}
@@ -188,20 +188,14 @@ defmodule Tx do
   end
 
   @doc """
-  Make a transaction (not to) rollback on exception.
+  Avoid a transaction to rollback on exception.
 
   Wrap around `tx` with `rollback_on_exception(tx, false)` if
   you avoid `tx` to rollback on exception. When an exception occurs,
   you will get an `{:error, exception}` instead.
-
-  Please note that it does not support enabling rollback_on_exception for
-  sub-transactions because that's the default behaviour.
   """
-  @spec rollback_on_exception(t(a), boolean()) :: t(a)
-  def rollback_on_exception(tx, rollback? \\ true)
-  def rollback_on_exception(tx, true), do: tx
-
-  def rollback_on_exception(tx, false) do
+  @spec disable_rollback_on_exception(t(a)) :: t(a)
+  def disable_rollback_on_exception(tx) do
     new(fn repo ->
       try do
         run(repo, tx)
@@ -314,6 +308,15 @@ defmodule Tx do
     case run(repo, tx) do
       {:ok, a} -> a
       {:error, e} -> raise e
+    end
+  end
+
+  @spec conditional_then(any(), boolean(), (any() -> any())) :: any()
+  defp conditional_then(input, condition, function) do
+    if condition do
+      function.(input)
+    else
+      input
     end
   end
 end
