@@ -16,7 +16,7 @@ defmodule Tx do
   @typep b :: term()
 
   @type fn_t(a) :: (Ecto.Repo.t() -> {:ok, a} | {:error, any()})
-  @type t(a) :: fn_t(a) | Ecto.Multi.t()
+  @type t(a) :: fn_t(a) | Ecto.Multi.t() | nil
   @type t :: t(any)
 
   @doc """
@@ -251,6 +251,8 @@ defmodule Tx do
   This function should be rarely needed if you use the `Tx.Macro.tx` macro.
   """
   @spec run(Ecto.Repo.t(), t(a) | any()) :: {:ok, a} | {:error, any()}
+  def run(_repo, nil), do: {:ok, nil}
+
   def run(repo, %Ecto.Multi{} = multi) do
     case repo.transaction(multi) do
       {:ok, map} ->
