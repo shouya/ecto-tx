@@ -64,7 +64,7 @@ defmodule Tx.Macro do
   defp rewrite(repo, body, else_) do
     repo = repo || Macro.var(:repo, __MODULE__)
 
-    quote do
+    quote location: :keep do
       Tx.new(fn unquote(repo) ->
         unquote(rewrite_inner(repo, body, else_))
       end)
@@ -89,7 +89,7 @@ defmodule Tx.Macro do
   # bind operator
   defp rewrite_bind_clause(repo, {:<-, env, [pat, expr]}) do
     run_expr =
-      quote do
+      quote location: :keep do
         Tx.run(unquote(repo), unquote(expr))
       end
 
