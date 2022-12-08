@@ -268,7 +268,13 @@ defmodule Tx do
   - For Ecto.Multi, it creates a sub-transaction to execute it
   - For a non-transactional value, it simply returns the value
 
-  This function should be rarely needed if you use the `Tx.Macro.tx` macro.
+  This function should be rarely needed if you use the `Tx.Macro.tx`
+  macro. You can simply use `a <- t` syntax instead of `a =
+  Tx.run(repo, t)` within the `tx` macro.
+
+  This function is meant to be used within a tx block or inside a Tx
+  closure. If you want to get a value out of a Tx, you may want to
+  call `execute/2` instead.
   """
   @spec run(Ecto.Repo.t(), t(a) | any()) :: {:ok, a} | {:error, any()}
   def run(repo, xs) when is_list(xs), do: run(repo, Tx.concat(xs))
@@ -307,7 +313,8 @@ defmodule Tx do
   @doc """
   The raising version of `run/2`.
 
-  This function should be rarely needed if you use the `Tx.Macro.tx` macro.
+  This function should be rarely needed if you use the `Tx.Macro.tx`
+  macro.
   """
   @spec run!(Ecto.Repo.t(), t(a)) :: a
   def run!(repo, tx) do
