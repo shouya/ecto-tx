@@ -1,8 +1,8 @@
 defmodule TxTest do
   use ExUnit.Case
-  doctest Tx
 
-  test "greets the world" do
-    assert Tx.hello() == :world
-  end
+  # used by doctests
+  alias DummyRepo, as: Repo
+
+  doctest Tx
 end
