@@ -88,6 +88,8 @@ defmodule Tx.Macro do
 
   # bind operator
   defp rewrite_bind_clause(repo, {:<-, env, [pat, expr]}) do
+    expr = rewrite_single_clause_if_and_unless(expr)
+
     run_expr =
       quote location: :keep do
         Tx.run(unquote(repo), unquote(expr))
@@ -97,4 +99,11 @@ defmodule Tx.Macro do
   end
 
   defp rewrite_bind_clause(_repo, other), do: other
+
+  defp rewrite_single_clause_if_and_unless([op, env, [cond_, do: then]])
+       when op in [:if, :unless] do
+    [op, env, [cond_, do: then, else: Macro.escape({:ok, nil})]]
+  end
+
+  defp rewrite_single_clause_if_and_unless(expr), do: expr
 end
