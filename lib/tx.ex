@@ -277,9 +277,6 @@ defmodule Tx do
   call `execute/2` instead.
   """
   @spec run(Ecto.Repo.t(), t(a) | any()) :: {:ok, a} | {:error, any()}
-  def run(repo, xs) when is_list(xs), do: run(repo, Tx.concat(xs))
-  def run(_repo, nil), do: {:ok, nil}
-
   def run(repo, %Ecto.Multi{} = multi) do
     case repo.transaction(multi) do
       {:ok, map} ->
