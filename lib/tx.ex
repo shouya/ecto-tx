@@ -50,9 +50,9 @@ defmodule Tx do
 
   Example:
 
-  iex> t = fn _repo -> {:ok, 42} end
-  iex> Tx.execute(Tx.new(t), Repo)
-  {:ok, 42}
+      iex> t = fn _repo -> {:ok, 42} end
+      iex> Tx.execute(Tx.new(t), Repo)
+      {:ok, 42}
   """
   @spec new(fn_t(a)) :: t(a)
   def new(f) when is_function(f, 1), do: f
@@ -66,8 +66,8 @@ defmodule Tx do
 
   `pure(a)` is equivalent to `new(fn _ -> {:ok, a} end)`.
 
-  iex> Tx.execute(Tx.pure(42), Repo)
-  {:ok, 42}
+      iex> Tx.execute(Tx.pure(42), Repo)
+      {:ok, 42}
   """
   @spec pure(a) :: t(a)
   def pure(a), do: new(fn _ -> {:ok, a} end)
@@ -77,8 +77,8 @@ defmodule Tx do
 
   Example:
 
-  iex> Tx.pure(1) |> Tx.map(&(&1 + 1)) |> Tx.execute(Repo)
-  {:ok, 2}
+      iex> Tx.pure(1) |> Tx.map(&(&1 + 1)) |> Tx.execute(Repo)
+      {:ok, 2}
   """
   @spec map(t(a), (a -> b)) :: t(b)
   def map(t, f) do
@@ -97,8 +97,8 @@ defmodule Tx do
 
   Example:
 
-  iex> Tx.pure(1) |> Tx.and_then(&{:error, &1}) |> Tx.execute(Repo)
-  {:error, 1}
+      iex> Tx.pure(1) |> Tx.and_then(&{:error, &1}) |> Tx.execute(Repo)
+      {:error, 1}
   """
   @spec and_then(t(a), (a -> t(b))) :: t(b)
   def and_then(t, f) when is_function(f, 1) do
@@ -160,15 +160,15 @@ defmodule Tx do
 
   Example:
 
-  iex> Tx.new(fn repo ->
-  ...>   if 1 == 1 do
-  ...>     Tx.rollback(repo, "One cannot be equal to one")
-  ...>   else
-  ...>    {:ok, :fine}
-  ...>   end
-  ...> end)
-  ...> |> Tx.execute(Repo)
-  {:error, "One cannot be equal to one"}
+      iex> Tx.new(fn repo ->
+      ...>   if 1 == 1 do
+      ...>     Tx.rollback(repo, "One cannot be equal to one")
+      ...>   else
+      ...>    {:ok, :fine}
+      ...>   end
+      ...> end)
+      ...> |> Tx.execute(Repo)
+      {:error, "One cannot be equal to one"}
   """
   @spec rollback(Ecto.Repo.t(), any()) :: no_return()
   def rollback(repo, error) do
@@ -215,7 +215,7 @@ defmodule Tx do
   You can refer to the transactin's result (`{:ok, a} | {:error,
   any}`) by `name`.
 
-    EctoRepo.transaction(to_multi(pure(42), :foo)) => {:ok, %{foo: {:ok, 42}}}
+      EctoRepo.transaction(to_multi(pure(42), :foo)) => {:ok, %{foo: {:ok, 42}}}
   """
   @spec to_multi(t(a), any()) :: Ecto.Multi.t()
   def to_multi(tx, name) do
@@ -227,8 +227,8 @@ defmodule Tx do
   @doc """
   Combine two transactions `Tx.t(a)` and `Tx.t(b)` into a single `Tx.t({a, b})`.
 
-  iex> Tx.concat(Tx.pure(1), Tx.pure(2)) |> Tx.execute(Repo)
-  {:ok, {1, 2}}
+      iex> Tx.concat(Tx.pure(1), Tx.pure(2)) |> Tx.execute(Repo)
+      {:ok, {1, 2}}
   """
   @spec concat(t(a), t(b)) :: t({a, b})
   def concat(a, b) do
@@ -243,8 +243,8 @@ defmodule Tx do
   @doc """
   Combine a list of transactions `[Tx.t(a)]` into a single `Tx.t([a])`.
 
-  iex> Tx.concat([Tx.pure(1), Tx.pure(2)]) |> Tx.execute(Repo)
-  {:ok, [1, 2]}
+      iex> Tx.concat([Tx.pure(1), Tx.pure(2)]) |> Tx.execute(Repo)
+      {:ok, [1, 2]}
   """
   @spec concat([t(a)]) :: t([a])
   def concat([]), do: pure([])
