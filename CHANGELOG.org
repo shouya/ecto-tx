@@ -23,3 +23,11 @@ Changed:
 - Handle list of Tx.t() as a Tx.t()
 - =rollback_on_error= function renamed into =enable_rollback_on_error= with clarified semantics
 - =rollback_on_exception= function renamed into =disable_rollback_on_error= with clarified semantics
+
+* 0.3.0
+
+- Move the handling of single-branched `if`/`unless` inside bind syntax
+  + Remove the handling of nil as pure(nil), because it breaks some Ecto functions that is expected to returns nil
+- Remove the feature handling list of Tx.t as Tx.t
+  + It was removed because it breaks Ecto functions that returns lists
+  + You must now invoke Tx.concat/1 on a list of Tx.t(a) to get a Tx.t([a])
