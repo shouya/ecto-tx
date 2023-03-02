@@ -14,8 +14,9 @@ defmodule Tx do
 
   @typep a :: term()
   @typep b :: term()
+  @type error_t :: any()
 
-  @type fn_t(a) :: (Ecto.Repo.t() -> {:ok, a} | {:error, any()})
+  @type fn_t(a) :: (Ecto.Repo.t() -> {:ok, a} | {:error, error_t()})
 
   @typedoc """
   You can put a value of any Tx type on the right of `<-` notation in Tx.Macro.
@@ -23,7 +24,7 @@ defmodule Tx do
   A Tx type is any of the following:
 
   - A Tx function :: any function that takes in a repo and returns a
-    `{:ok, a} | {:error, any()}` pair. You can create a Tx function
+    `{:ok, a} | {:error, error_t()}` pair. You can create a Tx function
     via the `tx` macro, or any tx combinators like `Tx.new`,
     `Tx.pure`, `Tx.concat`.
 
@@ -43,7 +44,7 @@ defmodule Tx do
   Create a transaction.
 
   This function creates a Tx.t() from a function of type
-  `(Ecto.Repo.t() -> {:ok, a} | {:error, any()})`.
+  `(Ecto.Repo.t() -> {:ok, a} | {:error, error_t()})`.
 
   Internally, the `new/1` constructor simply returns the function as
   is.
@@ -110,6 +111,59 @@ defmodule Tx do
     end)
   end
 
+  @doc """
+  Compose two transactions. If the first transaction fails,
+  fallback to the second transaction.
+
+  This is the "mplus"/"<|>" operation if you're familiar with
+  MonadPlus or Alternative.
+
+  Example:
+
+      iex> Tx.pure(1)
+      ...> |> Tx.and_then(&{:error, &1})
+      ...> |> Tx.or_else(&({:ok, &1}))
+      ...> |> Tx.execute(Repo)
+      {:ok, 1}
+  """
+  @spec or_else(t(a), (error_t -> t(b)) | (() -> t(b))) :: t(b)
+  def or_else(t, f) when is_function(f, 1) do
+    new(fn repo ->
+      case run(repo, t) do
+        {:ok, a} -> {:ok, a}
+        {:error, e} -> f.(e)
+      end
+    end)
+  end
+
+  def or_else(t, f) when is_function(f, 0) do
+    new(fn repo ->
+      case run(repo, t) do
+        {:ok, a} -> {:ok, a}
+        {:error, _e} -> f.()
+      end
+    end)
+  end
+
+  @doc """
+  Create a Tx value that always returns error.
+
+  This operation corresponds to the "mzero"/"empty" axiom in
+  the MonadPlus/Alternative instance.
+
+  Example:
+
+      iex> Tx.new_error(1) |> Tx.execute(Repo)
+      {:error, 1}
+
+      iex> Tx.new_error(1) |> Tx.or_else(fn -> {:ok, 2} end)|> Tx.execute(Repo)
+      {:ok, 2}
+  """
+  @spec new_error(error_t) :: t(a)
+  def new_error(error) do
+    new(fn _repo -> {:error, error} end)
+  end
+
   @default_opts [
     rollback_on_error: true,
     rollback_on_exception: true
@@ -121,7 +175,7 @@ defmodule Tx do
   Options:
 
   - rollback_on_error (Default: true): rollback transaction if the
-    final result is an {:error, any()
+    final result is an {:error, error_t()}
 
   - rollback_on_exception (Default: true): rollback transaction
     if an uncaught exception arises within the transaction.
@@ -170,7 +224,7 @@ defmodule Tx do
       ...> |> Tx.execute(Repo)
       {:error, "One cannot be equal to one"}
   """
-  @spec rollback(Ecto.Repo.t(), any()) :: no_return()
+  @spec rollback(Ecto.Repo.t(), error_t()) :: no_return()
   def rollback(repo, error) do
     repo.rollback(error)
   end
@@ -217,7 +271,7 @@ defmodule Tx do
 
       EctoRepo.transaction(to_multi(pure(42), :foo)) => {:ok, %{foo: {:ok, 42}}}
   """
-  @spec to_multi(t(a), any()) :: Ecto.Multi.t()
+  @spec to_multi(t(a), term()) :: Ecto.Multi.t()
   def to_multi(tx, name) do
     Ecto.Multi.run(Ecto.Multi.new(), name, fn repo, _changes ->
       execute(tx, repo)
@@ -261,7 +315,7 @@ defmodule Tx do
   @doc """
   Run a transaction to get its result.
 
-  This is a generic adapter for extracting a `{:ok, a} | {:error, any()}` from
+  This is a generic adapter for extracting a `{:ok, a} | {:error, error_t()}` from
   a transaction when given a repo.
 
   - For normal transaction `tx` as a function (default), it simply call tx.(repo)
@@ -276,7 +330,7 @@ defmodule Tx do
   closure. If you want to get a value out of a Tx, you may want to
   call `execute/2` instead.
   """
-  @spec run(Ecto.Repo.t(), t(a) | any()) :: {:ok, a} | {:error, any()}
+  @spec run(Ecto.Repo.t(), t(a) | any()) :: {:ok, a} | {:error, error_t()}
   def run(repo, %Ecto.Multi{} = multi) do
     case repo.transaction(multi) do
       {:ok, map} ->
