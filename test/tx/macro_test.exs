@@ -96,10 +96,16 @@ defmodule Tx.MacroTest do
   end
 
   defp normalize_ast(ast) do
-    Macro.postwalk(ast, fn
-      {a, [{:counter, _} | x], Tx.Macro} -> {a, x, __MODULE__}
-      {a, [{:counter, _} | x], c} -> {a, x, c}
+    Macro.postwalk(ast, fn node -> normalize_ast_node(node) end)
+  end
+
+  defp normalize_ast_node(node) do
+    case node do
+      {a, [{:counter, _} | x], Tx.Macro} -> normalize_ast_node({a, x, __MODULE__})
+      {a, [{:counter, _} | x], c} -> normalize_ast_node({a, x, c})
+      {a, [{:keep, _} | x], c} -> normalize_ast_node({a, x, c})
+      {a, [{:alias, _} | x], c} -> normalize_ast_node({a, x, c})
       x -> x
-    end)
+    end
   end
 end
