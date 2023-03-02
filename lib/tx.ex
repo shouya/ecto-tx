@@ -29,9 +29,13 @@ defmodule Tx do
     `Tx.pure`, `Tx.concat`.
 
   - An Ecto.Multi.t() :: equivalent a tx function that returns
-    `{:ok, %{multi_name => value}}` or `{:error, multi_error}`
+  `{:ok, %{multi_name => value}}` or `{:error, multi_error}`
+
+  - A plain `{:ok, a}` :: acts as a `fn_t(a)` that constantly return `{:ok, a}`
+
+  - A plain `{:error, error_t}` :: acts as a `fn_t(a)` that constantly return `{:ok, a}`
   """
-  @type t(a) :: fn_t(a) | Ecto.Multi.t()
+  @type t(a) :: fn_t(a) | Ecto.Multi.t() | {:ok, a} | {:error, error_t}
   @type t :: t(any)
 
   @doc """
@@ -65,7 +69,7 @@ defmodule Tx do
       {:ok, 42}
   """
   @spec pure(a) :: t(a)
-  def pure(a), do: new(fn _ -> {:ok, a} end)
+  def pure(a), do: {:ok, a}
 
   @doc """
   Map over the successful result of a transaction.
@@ -154,9 +158,7 @@ defmodule Tx do
       {:ok, 2}
   """
   @spec new_error(error_t) :: t(a)
-  def new_error(error) do
-    new(fn _repo -> {:error, error} end)
-  end
+  def new_error(e), do: {:error, e}
 
   @doc """
   Make a Tx optional so if it fails, it acts as a Tx that returns {:ok, nil}.
