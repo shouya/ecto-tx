@@ -30,14 +30,8 @@ defmodule Tx do
 
   - An Ecto.Multi.t() :: equivalent a tx function that returns
     `{:ok, %{multi_name => value}}` or `{:error, multi_error}`
-
-  - nil :: the same was as `Tx.pure(nil)`, which always
-    returns `{:ok, nil}` when been run.
-
-  - A list of any Tx type :: the same as `Tx.concat(list_of_tx)`, which returns
-    `{:ok, list_of_results}` only if all `list_of_tx` succeeds.
   """
-  @type t(a) :: fn_t(a) | Ecto.Multi.t() | nil | [t(any())]
+  @type t(a) :: fn_t(a) | Ecto.Multi.t()
   @type t :: t(any)
 
   @doc """
