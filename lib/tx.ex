@@ -158,6 +158,25 @@ defmodule Tx do
     new(fn _repo -> {:error, error} end)
   end
 
+  @doc """
+  Make a Tx optional so if it fails, it acts as a Tx that returns {:ok, nil}.
+
+  This operation corresponds to the "optional" combinator for
+  the Alternative instance.
+
+  Example:
+
+      iex> Tx.new_error(1) |> Tx.execute(Repo)
+      {:error, 1}
+
+      iex> Tx.new_error(1) |> Tx.make_optional() |> Tx.execute(Repo)
+      {:ok, nil}
+  """
+  @spec make_optional(t(a)) :: t(a | nil)
+  def make_optional(tx) do
+    or_else(tx, fn -> {:ok, nil} end)
+  end
+
   @default_opts [
     rollback_on_error: true,
     rollback_on_exception: true
