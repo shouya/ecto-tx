@@ -38,3 +38,9 @@ Changed:
   + This allows users to write two Tx that are fallback to one another.
 - Implement Tx.make_optional/1 to allow marking a Tx optional
 - Explicitly state that {:ok, a} and {:error, error_t} is considered Tx.t(a).
+
+* 0.4.1
+
+- Wrap around tx returning expression with Tx.run
+  + This allows users to return a transaction directly in last expression
+  + The same wrap-around also applies to the result in the else block
