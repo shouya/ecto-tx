@@ -36,3 +36,5 @@ Changed:
 
 - Implement Tx.or_else/2 and Tx.new_error/1 to make Tx an instance of Alternative.
   + This allows users to write two Tx that are fallback to one another.
+- Implement Tx.make_optional/1 to allow marking a Tx optional
+- Explicitly state that {:ok, a} and {:error, error_t} is considered Tx.t(a).
