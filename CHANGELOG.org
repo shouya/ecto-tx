@@ -31,3 +31,8 @@ Changed:
 - Remove the feature handling list of Tx.t as Tx.t
   + It was removed because it breaks Ecto functions that returns lists
   + You must now invoke Tx.concat/1 on a list of Tx.t(a) to get a Tx.t([a])
+
+* 0.4.0
+
+- Implement Tx.or_else/2 and Tx.new_error/1 to make Tx an instance of Alternative.
+  + This allows users to write two Tx that are fallback to one another.
