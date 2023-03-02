@@ -5,7 +5,7 @@ defmodule Tx.MixProject do
     [
       app: :tx,
       description: "A composable database transaction library",
-      version: "0.3.0",
+      version: "0.4.0",
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       package: package(),
