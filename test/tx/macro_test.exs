@@ -10,7 +10,7 @@ defmodule Tx.MacroTest do
           Tx.new(fn repo ->
             with {:ok, a} <- Tx.run(repo, tx_a(foo)),
                  {:ok, b} <- Tx.run(repo, tx_b(a, foo)) do
-              {:ok, {a, b}}
+              Tx.run(repo, {:ok, {a, b}})
             end
           end)
         end
@@ -36,11 +36,11 @@ defmodule Tx.MacroTest do
           Tx.new(fn repo ->
             with {:ok, a} <- Tx.run(repo, tx_a(foo)),
                  {:ok, b} <- Tx.run(repo, tx_b(a, foo)) do
-              {:ok, {a, b}}
+              Tx.run(repo, {:ok, {a, b}})
             else
-              {:error, e1} -> {:error, e1}
-              {:error, e2} when e2 > 0 -> {:error, e2}
-              e3 -> e3
+              {:error, e1} -> Tx.run(repo, {:error, e1})
+              {:error, e2} when e2 > 0 -> Tx.run(repo, {:error, e2})
+              e3 -> Tx.run(repo, e3)
             end
           end)
         end
@@ -73,7 +73,7 @@ defmodule Tx.MacroTest do
             with foo = bar(repo1),
                  {:ok, a} <- Tx.run(repo1, tx_a(foo)),
                  {:ok, b} <- Tx.run(repo1, tx_b(a, foo, repo1)) do
-              {:ok, {a, b, foo}}
+              Tx.run(repo1, {:ok, {a, b, foo}})
             end
           end)
         end

@@ -28,7 +28,7 @@ defmodule Tx.Macro do
         with {:ok, value} <- Tx.run(repo, repo.insert(foo)),
              {:ok, a} <- Tx.run(repo, create_a_tx(value)),
              {:ok, b} <- Tx.run(repo, create_b_tx(a)) do
-          {:ok, {a, b}}
+          Tx.run(repo, {:ok, {a, b}})
         end
       end)
   """
@@ -51,7 +51,7 @@ defmodule Tx.Macro do
       Tx.new(fn repo ->
         with {:ok, a} <- Tx.run(repo, create_a_tx(value)),
              {:ok, b} <- Tx.run(repo, create_b_tx(a)) do
-          {:ok, {a, b}}
+          Tx.run(repo, {:ok, {a, b}})
         end
       end)
 
@@ -75,10 +75,17 @@ defmodule Tx.Macro do
     exprs = Enum.map(Enum.slice(body, 0..-2), &rewrite_bind_clause(repo, &1))
     last_expr = Enum.at(body, -1)
 
+    last_expr =
+      quote location: :keep do
+        Tx.run(unquote(repo), unquote(last_expr))
+      end
+
+    else_exprs = rewrite_else(repo, else_)
+
     do_and_else =
-      case else_ do
+      case else_exprs do
         nil -> [do: last_expr]
-        _ -> [do: last_expr, else: else_]
+        _ -> [do: last_expr, else: else_exprs]
       end
 
     {:with, [], exprs ++ [do_and_else]}
@@ -106,4 +113,19 @@ defmodule Tx.Macro do
   end
 
   defp rewrite_single_clause_if_and_unless(expr), do: expr
+
+  defp rewrite_else(_repo, nil), do: nil
+
+  defp rewrite_else(repo, xs) do
+    Enum.map(xs, &rewrite_else_clause(repo, &1))
+  end
+
+  defp rewrite_else_clause(repo, {:->, env, [left, right]}) do
+    right =
+      quote location: :keep do
+        Tx.run(unquote(repo), unquote(right))
+      end
+
+    {:->, env, [left, right]}
+  end
 end
